@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Floating Words Quiz 🎵</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: radial-gradient(ellipse at center, #f4ecd8 0%, #e8d9b5 100%);
+      color: #3b2f1e;
+      text-align: center;
+      min-height: 100vh;
+    }
+    
+    .container {
+      position: relative;
+      max-width: 95%;
+      width: 1200px;
+      margin: 1rem auto;
+      background: rgba(255, 255, 240, 0.85);
+      padding: 1rem;
+      border-radius: 15px;
+      border: 1px solid #d2b48c;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      min-height: 90vh;
+    }
+    
+    .quiz-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem 1rem;
+      font-size: 1rem;
+      color: #5b442a;
+      margin-bottom: 1rem;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 8px;
+    }
+    
+    .quiz-header > div {
+      flex: 1;
+    }
+    
+    #timer { text-align: left; font-weight: 600; }
+    #gemsCounter { text-align: center; font-weight: 600; font-size: 1.2rem; }
+    #progressTracker { text-align: right; font-weight: 600; }
+    
+    .instruction {
+      font-size: 1.2rem;
+      margin: 1rem 0;
+      color: #4a3b2a;
+      font-weight: 500;
+      /* Height is kept even if empty to maintain layout */
+      min-height: 1.5em; 
+    }
+    
+    .audio-controls {
+      margin: 1rem 0;
+    }
+    
+    .audio-controls button {
+      padding: 0.6rem 1.3rem;
+      font-size: 1rem;
+      background-color: #d2b48c;
+      border: 1px solid #a1886f;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #3b2f1e;
+      margin: 0 0.5rem;
+      transition: all 0.2s ease;
+    }
+    
+    .audio-controls button:hover:not(:disabled) {
+      background-color: #c9a96b;
+      transform: translateY(-2px);
+    }
+    
+    .audio-controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .bubble-container {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      border: 2px dashed #d2b48c;
+      border-radius: 15px;
+      background: rgba(255, 250, 235, 0.5);
+      padding: 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+      align-items: center;
+      align-content: center;
+      overflow: hidden;
+    }
+    
+    @media (max-width: 768px) {
+      .bubble-container {
+        height: 350px;
+        padding: 1rem;
+        gap: 0.8rem;
+      }
+      
+      .bubble {
+        padding: 0.6rem 1rem;
+        font-size: 0.95rem;
+      }
+    }
+    
+    .bubble {
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(135deg, #f7e7c4 0%, #f5deb3 100%);
+      border: 2px solid #d2b48c;
+      border-radius: 50px;
+      cursor: pointer;
+      user-select: none;
+      color: #3b2f1e;
+      font-size: 1.1rem;
+      font-weight: 500;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      white-space: nowrap;
+    }
+    
+    .bubble:hover:not(.tapped) {
+      transform: scale(1.1);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+      background: linear-gradient(135deg, #f5deb3 0%, #f0dba5 100%);
+    }
+    
+    .bubble.tapped {
+      /* Make the bubble disappear when tapped correctly */
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.5); /* Add a shrink effect */
+      pointer-events: none;
+      transition: all 0.4s ease;
+    }
+    
+    .bubble.wrong {
+      animation: shake 0.5s ease-in-out;
+      background: linear-gradient(135deg, #ffcccb 0%, #ff9999 100%);
+      border-color: #b22222;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+    
+    @keyframes sparkle {
+      0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(var(--random-x, 0), -80px) scale(1.5);
+        opacity: 0;
+      }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.8); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    
+    .bubble.fade-out {
+      animation: fadeOut 0.3s ease-out forwards;
+    }
+    
+    .bubble.fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+    
+    .gem-spark {
+      position: absolute;
+      pointer-events: none;
+      font-size: 1.5rem;
+      animation: sparkle 1s ease-out forwards;
+      z-index: 100;
+    }
+    
+    .answer-area {
+      margin-top: 1.5rem;
+      min-height: 60px;
+      padding: 1rem;
+      background: rgba(255, 255, 240, 0.7);
+      border: 2px solid #d2b48c;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      line-height: 1.8;
+      color: #4a3b2a;
+    }
+    
+    .answer-word {
+      display: inline-block;
+      margin: 0 0.3rem;
+      padding: 0.3rem 0.8rem;
+      background: #e8f5e9;
+      border: 1px solid #4caf50;
+      border-radius: 8px;
+      color: #2e7d32;
+    }
+    
+    #scoreCard {
+      margin-top: 2rem;
+      font-size: 1.1rem;
+      color: #4b3b2a;
+    }
+    
+    #scoreCard p {
+      margin: 0.5rem 0;
+    }
+    
+    #restartBtn {
+      margin-top: 1.5rem;
+      padding: 0.7rem 2rem;
+      font-size: 1.1rem;
+      background-color: #d2b48c;
+      border: 1px solid #a1886f;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #3b2f1e;
+      transition: background-color 0.2s ease;
+    }
+    
+    #restartBtn:hover {
+      background-color: #c9a96b;
+    }
+    
+    /* Changed div to form */
+    #nameForm {
+      margin-top: 3rem;
+      padding: 2rem;
+    }
+    
+    #nameForm h2 {
+      margin-bottom: 1.5rem;
+      color: #4a3b2a;
+    }
+    
+    #nameInput, #departmentSelect {
+      padding: 0.7rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: 1px solid #c2a677;
+      margin: 0.5rem;
+      background: #fffdf6;
+      color: #3b2f1e;
+      min-width: 200px;
+    }
+    
+    #nameForm button {
+      padding: 0.7rem 2rem;
+      font-size: 1.1rem;
+      background-color: #d2b48c;
+      border: 1px solid #a1886f;
+      border-radius: 10px;
+      cursor: pointer;
+      color: #3b2f1e;
+      margin-top: 1rem;
+    }
+    
+    #nameForm button:hover {
+      background-color: #c9a96b;
+    }
+    
+    .chunk-indicator {
+      font-size: 0.9rem;
+      color: #8b7355;
+      margin-bottom: 0.5rem;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<div class="container" id="quizContainer">
+  
+  <form id="nameForm" onsubmit="beginQuiz(event)">
+    <h2>🎵 Floating Words Audio Quiz</h2>
+    <input type="text" id="nameInput" placeholder="Enter your name" />
+    <select id="departmentSelect">
+      <option value="">-- Select Department --</option>
+      <option value="Cyber Security">Cyber Security</option>
+      <option value="CSE-1">CSE-1</option>
+      <option value="CSE-2">CSE-2</option>
+      <option value="CSE-3">CSE-3</option>
+      <option value="Mechanical Engineering">Mechanical Engineering</option>
+      <option value="ECE-1">ECE-1</option>
+      <option value="ECE-2">ECE-2</option>
+      <option value="ECE-3">ECE-3</option>
+      <option value="AI DS-1">AI DS-1</option>
+      <option value="AI DS-2">AI DS-2</option>
+      <option value="Civil">Civil</option>
+      <option value="Agri">Agri</option>
+      <option value="EEE">EEE</option>
+      <option value="EIE">EIE</option>
+      <option value="Medical Electronics">Medical Electronics</option>
+      <option value="IT-1">IT-1</option>
+      <option value="IT-2">IT-2</option>
+    </select>
+    <br>
+    <button type="submit">Start Quiz</button>
+  </form>
+  
+  <div id="quizContent" style="display:none;">
+    <div class="quiz-header">
+      <div id="timer">⏳ 0s</div>
+      <div id="gemsCounter">💎 0</div>
+      <div id="progressTracker">📍 0 of 0</div>
+    </div>
+    
+    <div class="instruction" id="instruction"></div>
+    
+    <div class="audio-controls">
+      <button id="playBtn" onclick="playAudio()">▶️ Play</button>
+      <button id="pauseBtn" onclick="pauseAudio()" disabled>⏸️ Pause</button>
+      <button id="replayBtn" onclick="replayAudio()" disabled>🔁 Replay (-1 💎)</button>
+    </div>
+    
+    <div class="chunk-indicator" id="chunkIndicator"></div>
+    
+    <div class="bubble-container" id="bubbleContainer"></div>
+    
+    <div class="answer-area" id="answerArea">
+      <em>Your answer will appear here...</em>
+    </div>
+    
+    <div id="scoreCard"></div>
+    <button id="restartBtn" style="display: none;" onclick="restart()">Restart</button>
+  </div>
+</div>
+
+<audio id="audioPlayer" preload="auto">
+  <source src="https://github.com/andrewveda/3/raw/main/Pygmalion.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+// --- Global Constants ---
+const passage = "The Pygmalion effect is the phenomenon whereby higher expectations lead to higher performance. It can be best understood by a circle where our beliefs about another person's abilities influence our actions toward the other person.";
+const WORDS_PER_CHUNK = 10;
+const MAX_REPLAYS = 3;
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxA0lRkERWFt2cYfmm04IQioaG4-21k5VFF5CFKP30zyVaJXM5_27PL3v8JIZEweK3u/exec";
+
+// --- Global State Variables ---
+let allWords = [];
+let wordChunks = [];
+let currentChunk = 0;
+let playerName = "";
+let playerDept = "";
+let gemsCount = 0;
+let startTime;
+let timerInterval;
+let tappedSequence = [];
+let chunkTappedSequence = [];
+let hasPlayed = false;
+let replayCount = 0;
+
+// --- Element References ---
+const audioPlayer = document.getElementById('audioPlayer');
+const timerEl = document.getElementById('timer');
+const gemsCounterEl = document.getElementById('gemsCounter');
+const progressTracker = document.getElementById('progressTracker');
+const bubbleContainer = document.getElementById('bubbleContainer');
+const answerArea = document.getElementById('answerArea');
+const scoreCard = document.getElementById('scoreCard');
+const playBtn = document.getElementById('playBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const replayBtn = document.getElementById('replayBtn');
+const chunkIndicator = document.getElementById('chunkIndicator');
+const nameForm = document.getElementById('nameForm');
+const quizContent = document.getElementById('quizContent');
+const nameInput = document.getElementById('nameInput');
+const departmentSelect = document.getElementById('departmentSelect');
+const restartBtn = document.getElementById('restartBtn');
+const instructionEl = document.getElementById('instruction');
+
+// --- Event Listeners for Audio Player ---
+audioPlayer.addEventListener('play', () => {
+  playBtn.disabled = true;
+  pauseBtn.disabled = false;
+  replayBtn.disabled = false; // Enable replay once playing starts
+});
+
+audioPlayer.addEventListener('pause', () => {
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+});
+
+// --- Quiz Logic ---
+
+/**
+ * Starts the quiz after validating name and department.
+ * Called by the form's onsubmit event.
+ * @param {Event} event - The form submission event.
+ */
+function beginQuiz(event) {
+  event.preventDefault(); // Prevent the form from actually submitting
+  
+  const nameValue = nameInput.value.trim();
+  const deptValue = departmentSelect.value;
+  
+  if (!nameValue) { 
+    // **IMPROVEMENT: Changed from console.error to alert for user visibility**
+    alert("Please enter your name!"); 
+    return; 
+  }
+  if (!deptValue) { 
+    // **IMPROVEMENT: Changed from console.error to alert for user visibility**
+    alert("Please select your department!"); 
+    return; 
+  }
+  
+  playerName = nameValue;
+  playerDept = deptValue;
+  
+  nameForm.style.display = 'none';
+  quizContent.style.display = 'block';
+  startQuiz();
+}
+
+/**
+ * Initializes and starts the main quiz logic.
+ */
+function startQuiz() {
+  allWords = passage.split(' ');
+  wordChunks = [];
+  
+  // Split into chunks
+  for (let i = 0; i < allWords.length; i += WORDS_PER_CHUNK) {
+    wordChunks.push(allWords.slice(i, i + WORDS_PER_CHUNK));
+  }
+  
+  currentChunk = 0;
+  gemsCount = 10; // Starting gems
+  tappedSequence = [];
+  chunkTappedSequence = [];
+  hasPlayed = false;
+  replayCount = 0;
+  startTime = Date.now();
+  
+  gemsCounterEl.innerText = `💎 ${gemsCount}`;
+  updateProgress();
+  answerArea.innerHTML = '<em>Your answer will appear here...</em>';
+  
+  // Reset button states
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  replayBtn.disabled = true;
+  
+  startTimer();
+  loadChunk();
+}
+
+/**
+ * Updates the progress tracker text.
+ */
+function updateProgress() {
+  const totalTapped = tappedSequence.length;
+  const totalWords = allWords.length;
+  progressTracker.innerText = `📍 ${totalTapped} of ${totalWords}`;
+}
+
+/**
+ * Loads the current chunk of words or ends the quiz if done.
+ */
+function loadChunk() {
+  if (currentChunk >= wordChunks.length) {
+    showScore();
+    return;
+  }
+  
+  const chunk = wordChunks[currentChunk];
+  chunkTappedSequence = [];
+  
+  // Update chunk indicator
+  if (wordChunks.length > 1) {
+    chunkIndicator.innerText = `Section ${currentChunk + 1} of ${wordChunks.length}`;
+  } else {
+    chunkIndicator.innerText = '';
+  }
+  
+  createBubbles(chunk);
+}
+
+/**
+ * Creates and displays word bubbles for the given array of words.
+ * @param {string[]} words - The array of words for the current chunk.
+ */
+function createBubbles(words) {
+  // Fade out existing bubbles
+  const existingBubbles = bubbleContainer.querySelectorAll('.bubble');
+  existingBubbles.forEach(bubble => {
+    bubble.classList.add('fade-out');
+  });
+  
+  // Wait for fade-out to finish before adding new bubbles
+  setTimeout(() => {
+    bubbleContainer.innerHTML = '';
+    const shuffledWords = [...words].sort(() => Math.random() - 0.5);
+    
+    shuffledWords.forEach((word) => {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble fade-in';
+      bubble.innerText = word;
+      bubble.dataset.word = word;
+      
+      bubble.onclick = () => handleBubbleTap(bubble, word);
+      bubbleContainer.appendChild(bubble);
+    });
+  }, 300); // This duration should match the fadeOut animation
+}
+
+/**
+ * Plays the audio.
+ */
+function playAudio() {
+  audioPlayer.play();
+  hasPlayed = true;
+  // Button states handled by 'play' event listener
+}
+
+/**
+ * Pauses the audio.
+ */
+function pauseAudio() {
+  audioPlayer.pause();
+  // Button states handled by 'pause' event listener
+}
+
+/**
+ * Replays the audio from the beginning, costing gems.
+ */
+function replayAudio() {
+  if (replayCount >= MAX_REPLAYS) {
+    instructionEl.innerText = "Maximum replays reached!";
+    setTimeout(() => { instructionEl.innerText = ""; }, 2000);
+    return;
+  }
+  
+  if (gemsCount <= 0) {
+    instructionEl.innerText = "Not enough gems to replay!";
+    setTimeout(() => { instructionEl.innerText = ""; }, 2000);
+    return;
+  }
+  
+  gemsCount -= 1;
+  replayCount++;
+  gemsCounterEl.innerText = `💎 ${gemsCount}`;
+  audioPlayer.currentTime = 0;
+  audioPlayer.play();
+  // 'play' event listener will handle button states
+}
+
+/**
+ * Handles the logic when a user clicks a word bubble.
+ * @param {HTMLElement} bubble - The bubble element that was clicked.
+ * @param {string} word - The word text of the clicked bubble.
+ */
+function handleBubbleTap(bubble, word) {
+  if (!hasPlayed) {
+    instructionEl.innerText = "Please play the audio first!";
+    setTimeout(() => { instructionEl.innerText = ""; }, 2000);
+    return;
+  }
+  
+  if (bubble.classList.contains('tapped')) return;
+  
+  const currentChunkWords = wordChunks[currentChunk];
+  const expectedWord = currentChunkWords[chunkTappedSequence.length];
+  
+  if (word === expectedWord) {
+    bubble.classList.add('tapped'); // Triggers CSS disappearance
+    chunkTappedSequence.push(word);
+    tappedSequence.push(word);
+    gemsCount += 2;
+    
+    createSparkleEffect(bubble);
+    gemsCounterEl.innerText = `💎 ${gemsCount}`;
+    updateProgress();
+    updateAnswerArea();
+    
+    // Check if current chunk is complete
+    if (chunkTappedSequence.length === currentChunkWords.length) {
+      setTimeout(() => {
+        currentChunk++;
+        loadChunk();
+      }, 800); // Wait for bubble to fade
+    }
+  } else {
+    // Wrong word
+    bubble.classList.add('wrong');
+    gemsCount -= 1;
+    gemsCounterEl.innerText = `💎 ${gemsCount}`;
+    
+    setTimeout(() => {
+      bubble.classList.remove('wrong');
+    }, 500); // Duration of the shake animation
+  }
+}
+
+/**
+ * Updates the answer area with the correctly tapped words.
+ */
+function updateAnswerArea() {
+  if (tappedSequence.length === 0) {
+    answerArea.innerHTML = '<em>Your answer will appear here...</em>';
+  } else {
+    answerArea.innerHTML = tappedSequence
+      .map(word => `<span class="answer-word">${word}</span>`)
+      .join(' ');
+  }
+}
+
+/**
+ * Creates a visual sparkle effect at the bubble's location.
+ * @param {HTMLElement} element - The element to originate from.
+ */
+function createSparkleEffect(element) {
+  const rect = element.getBoundingClientRect();
+  const container = document.body;
+  
+  const sparkCount = 5;
+  for (let i = 0; i < sparkCount; i++) {
+    const spark = document.createElement('div');
+    spark.className = 'gem-spark';
+    spark.innerText = ['💎', '✨', '⭐'][Math.floor(Math.random() * 3)];
+    
+    spark.style.position = 'fixed'; // Use fixed to overlay everything
+    spark.style.left = `${rect.left + rect.width / 2}px`;
+    spark.style.top = `${rect.top + rect.height / 2}px`;
+    
+    const randomX = (Math.random() - 0.5) * 100;
+    spark.style.setProperty('--random-x', `${randomX}px`);
+    
+    container.appendChild(spark);
+    setTimeout(() => spark.remove(), 1000); // Remove after animation
+  }
+}
+
+/**
+ * Displays the final score and sends data.
+ */
+function showScore() {
+  clearInterval(timerInterval);
+  const totalTime = Math.floor((Date.now() - startTime) / 1000);
+  
+  bubbleContainer.innerHTML = '';
+  instructionEl.innerText = '🎉 Quiz Completed!';
+  document.querySelector('.audio-controls').style.display = 'none';
+  chunkIndicator.innerText = '';
+  progressTracker.innerText = '';
+  
+  const accuracy = ((tappedSequence.length / allWords.length) * 100).toFixed(1);
+  
+  scoreCard.innerHTML = `
+    <p>👤 Player: <strong>${playerName}</strong></p>
+    <p>🏢 Department: <strong>${playerDept}</strong></p>
+    <p>🏆 Completion: <strong>${accuracy}%</strong></p>
+    <p>💎 Final Gems: <strong>${gemsCount}</strong></p>
+    <p>🔁 Replays Used: <strong>${replayCount}/${MAX_REPLAYS}</strong></p>
+    <p>⏱️ Time Taken: <strong>${totalTime} seconds</strong></p>
+    <button onclick="downloadPDFReport()" style="margin-top: 1rem; padding: 0.7rem 2rem; background-color: #4CAF50; border: none; border-radius: 10px; cursor: pointer; color: white; font-size: 1rem;">📥 Download PDF Report</button>
+  `;
+  
+  restartBtn.style.display = 'inline-block';
+  
+  // Send data to Google Script
+  fetch(GOOGLE_SCRIPT_URL, {
+    method: "POST",
+    mode: "no-cors", // Note: no-cors means you won't get a real response
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: playerName,
+      correct: tappedSequence.length,
+      wrong: 0, // This seems to be hardcoded, might want to track wrong clicks
+      time: totalTime,
+      department: playerDept,
+      questId: "Quest Audio Bubble"
+    })
+  })
+  .then(() => {
+    console.log("Score submission attempt finished (no-cors).");
+  })
+  .catch(error => {
+    // **IMPROVEMENT: Added catch block for network errors**
+    console.error("Error submitting score:", error);
+    // Optionally alert the user that score submission might have failed
+    alert("Could not submit score. Please check your internet connection and try again, or download the PDF report.");
+  });
+}
+
+/**
+ * Starts the quiz timer.
+ */
+function startTimer() {
+  clearInterval(timerInterval); // Clear any existing timer
+  timerInterval = setInterval(() => {
+    const elapsed = Math.floor((Date.now() - startTime) / 1000);
+    timerEl.innerText = `⏳ ${elapsed}s`;
+  }, 1000);
+}
+
+/**
+ * Generates and downloads the PDF report.
+ */
+function downloadPDFReport() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  
+  const totalTime = Math.floor((Date.now() - startTime) / 1000);
+  const reportDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  
+  // --- PDF Header ---
+  doc.setFillColor(25, 25, 60); // Dark blue
+  doc.rect(0, 0, 210, 45, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('times', 'bold');
+  doc.setFontSize(18);
+  doc.text('SRM VALLIAMMAI ENGINEERING COLLEGE', 105, 16, { align: 'center' });
+  doc.setFontSize(12);
+  doc.setFont('times', 'italic');
+  doc.text('(Autonomous)', 105, 23, { align: 'center' });
+  doc.setFontSize(15);
+  doc.setFont('times', 'normal');
+  doc.text('Department of English', 105, 31, { align: 'center' });
+  doc.setFontSize(14);
+  doc.setFont('times', 'bold');
+  doc.setTextColor(212, 175, 55); // Gold
+  doc.text('Audio Bubble Quest Report', 105, 39, { align: 'center' });
+  
+  // --- Candidate Info Table ---
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(11);
+  doc.text('CANDIDATE INFORMATION', 20, 55);
+  doc.autoTable({
+    startY: 58,
+    body: [
+      ['Student Name', playerName],
+      ['Department', playerDept],
+      ['Quest Type', 'Audio Bubble - Listening Comprehension'],
+      ['Completed On', reportDate]
+    ],
+    theme: 'plain',
+    styles: { fontSize: 10, font: 'times', cellPadding: 3 },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 60, textColor: [70, 70, 70] },
+      1: { cellWidth: 120 }
+    },
+    margin: { left: 20, right: 20 }
+  });
+  
+  // --- Performance Summary Table ---
+  let y = doc.lastAutoTable.finalY + 10;
+  doc.setFont('times', 'bold');
+  doc.text('PERFORMANCE SUMMARY', 20, y);
+  y += 4;
+  doc.autoTable({
+    startY: y + 3,
+    body: [
+      ['Total Words', allWords.length.toString()],
+      ['Correct Sequence', tappedSequence.length.toString()],
+      ['Final Gems', gemsCount.toString()],
+      ['Replays Used', `${replayCount}/${MAX_REPLAYS}`],
+      ['Total Time', `${Math.floor(totalTime / 60)}m ${totalTime % 60}s`]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 10, font: 'times', cellPadding: 3 },
+    margin: { left: 20, right: 20 }
+  });
+  
+  // --- Passage Text ---
+  y = doc.lastAutoTable.finalY + 12;
+  doc.setFont('times', 'bold');
+  doc.text('AUDIO PASSAGE', 20, y);
+  y += 6;
+  doc.setFont('times', 'normal');
+  const passageLines = doc.splitTextToSize(passage, 170);
+  doc.text(passageLines, 20, y);
+  
+  // --- PDF Footer ---
+  doc.setDrawColor(184, 134, 11); // Gold-ish line
+  doc.setLineWidth(0.5);
+  doc.line(20, 280, 190, 280);
+  doc.setFontSize(8);
+  doc.setTextColor(128, 128, 128);
+  doc.setFont('times', 'italic');
+  doc.text('This is a system-generated report', 105, 287, { align: 'center' });
+  
+  // --- Save File ---
+  const cleanName = playerName.replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`${cleanName}_AudioBubble_Report.pdf`);
+}
+
+/**
+ * Resets the quiz to the initial name form.
+ */
+function restart() {
+  quizContent.style.display = 'none';
+  nameForm.style.display = 'block';
+  nameInput.value = '';
+  departmentSelect.value = '';
+  scoreCard.innerHTML = '';
+  instructionEl.innerText = '';
+  restartBtn.style.display = 'none';
+  
+  // Reset audio controls
+  document.querySelector('.audio-controls').style.display = 'block';
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  replayBtn.disabled = true;
+  
+  // Stop and reset audio
+  audioPlayer.pause();
+  audioPlayer.currentTime = 0;
+  
+  // Clear any leftover timer
+  clearInterval(timerInterval);
+  timerEl.innerText = '⏳ 0s';
+}
+</script>
+</body>
+</html>
+
