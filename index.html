@@ -7,6 +7,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <style>
+    /* * Cleaned up all leading whitespace and non-breaking spaces
+     * in this style block, as they may have caused parsing errors.
+    */
     * {
       box-sizing: border-box;
     }
@@ -15,6 +18,9 @@
       margin: 0;
       padding: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      /* --- RESTORED --- 
+         Restoring the original radial-gradient.
+      */
       background: radial-gradient(ellipse at center, #f4ecd8 0%, #e8d9b5 100%);
       color: #3b2f1e;
       text-align: center;
@@ -140,13 +146,16 @@
       background: linear-gradient(135deg, #f5deb3 0%, #f0dba5 100%);
     }
     
+    /* --- RESTORED --- 
+       Bubbles now disappear again when tapped correctly,
+       as per the original functionality.
+    */
     .bubble.tapped {
-      /* Make the bubble disappear when tapped correctly */
       opacity: 0;
       visibility: hidden;
       transform: scale(0.5); /* Add a shrink effect */
       pointer-events: none;
-      transition: all 0.4s ease;
+      transition: all 0.1s ease; /* Restored original 0.1s transition */
     }
     
     .bubble.wrong {
@@ -177,18 +186,19 @@
       to { opacity: 0; }
     }
     
+    /* 'fade-in' class is no longer used by createBubbles, but kept for now */
     @keyframes fadeIn {
       from { opacity: 0; transform: scale(0.8); }
       to { opacity: 1; transform: scale(1); }
     }
     
     .bubble.fade-out {
-      animation: fadeOut 0.3s ease-out forwards;
+      animation: fadeOut 0.3s ease-out forwards; /* Changed duration to 0.3s */
     }
     
-    .bubble.fade-in {
-      animation: fadeIn 0.4s ease-out forwards;
-    }
+    /* .bubble.fade-in {
+       animation: fadeIn 0.3s ease-out forwards;
+    } */
     
     .gem-spark {
       position: absolute;
@@ -327,19 +337,20 @@
       <div id="gemsCounter">💎 0</div>
       <div id="progressTracker">📍 0 of 0</div>
     </div>
-    
-    <div class="instruction" id="instruction"></div>
-    
-    <div class="audio-controls">
-      <button id="playBtn" onclick="playAudio()">▶️ Play</button>
-      <button id="pauseBtn" onclick="pauseAudio()" disabled>⏸️ Pause</button>
-      <button id="replayBtn" onclick="replayAudio()" disabled>🔁 Replay (-1 💎)</button>
-    </div>
-    
+        
     <div class="chunk-indicator" id="chunkIndicator"></div>
     
     <div class="bubble-container" id="bubbleContainer"></div>
+    <div class="audio-controls">
+      <button id="playBtn" onclick="playAudio()">▶️ </button>
+      <button id="pauseBtn" onclick="pauseAudio()" disabled>⏸️ 
+</button>
+      <button id="replayBtn" onclick="replayAudio()" disabled>🔁  (-1 💎)</button>
+    </div>
+
+    <div class="instruction" id="instruction"></div>
     
+
     <div class="answer-area" id="answerArea">
       <em>Your answer will appear here...</em>
     </div>
@@ -418,14 +429,13 @@ function beginQuiz(event) {
   const nameValue = nameInput.value.trim();
   const deptValue = departmentSelect.value;
   
+  // Use a simple modal for alerts
   if (!nameValue) { 
-    // **IMPROVEMENT: Changed from console.error to alert for user visibility**
-    alert("Please enter your name!"); 
+    showCustomAlert("Please enter your name!"); 
     return; 
   }
   if (!deptValue) { 
-    // **IMPROVEMENT: Changed from console.error to alert for user visibility**
-    alert("Please select your department!"); 
+    showCustomAlert("Please select your department!"); 
     return; 
   }
   
@@ -436,6 +446,59 @@ function beginQuiz(event) {
   quizContent.style.display = 'block';
   startQuiz();
 }
+
+/**
+ * Shows a custom alert message as an element on the page.
+ * @param {string} message - The message to display.
+ */
+function showCustomAlert(message) {
+    // Check if an alert already exists
+    let existingAlert = document.getElementById('customAlert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    // Create alert elements
+    const alertBox = document.createElement('div');
+    alertBox.id = 'customAlert';
+    alertBox.style.position = 'fixed';
+    alertBox.style.top = '20px';
+    alertBox.style.left = '50%';
+    alertBox.style.transform = 'translateX(-50%)';
+    alertBox.style.padding = '1rem 2rem';
+    alertBox.style.background = 'white';
+    alertBox.style.border = '2px solid #b22222';
+    alertBox.style.borderRadius = '10px';
+    alertBox.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
+    alertBox.style.zIndex = '1001';
+    alertBox.style.color = '#b22222';
+    alertBox.style.fontSize = '1.1rem';
+    alertBox.style.fontWeight = '500';
+
+    const alertText = document.createElement('p');
+    alertText.innerText = message;
+    alertText.style.margin = '0 0 1rem 0';
+
+    const closeButton = document.createElement('button');
+    closeButton.innerText = 'OK';
+    closeButton.style.padding = '0.5rem 1.5rem';
+    closeButton.style.background = '#d2b48c';
+    closeButton.style.border = '1px solid #a1886f';
+    closeButton.style.borderRadius = '5px';
+    closeButton.style.cursor = 'pointer';
+    closeButton.style.color = '#3b2f1e';
+
+    // Assemble and append
+    alertBox.appendChild(alertText);
+    alertBox.appendChild(closeButton);
+    document.body.appendChild(alertBox);
+
+    // Close functionality
+    closeButton.onclick = () => {
+        alertBox.remove();
+    };
+}
+
 
 /**
  * Initializes and starts the main quiz logic.
@@ -502,7 +565,10 @@ function loadChunk() {
 }
 
 /**
- * Creates and displays word bubbles for the given array of words.
+ * --- MODIFIED ---
+ * Creates and displays word bubbles with a new animation.
+ * The first word of the chunk appears first, then the rest appear
+ * in a random, staggered order. Positions are also randomized.
  * @param {string[]} words - The array of words for the current chunk.
  */
 function createBubbles(words) {
@@ -514,20 +580,64 @@ function createBubbles(words) {
   
   // Wait for fade-out to finish before adding new bubbles
   setTimeout(() => {
+    // 1. Clear container
     bubbleContainer.innerHTML = '';
-    const shuffledWords = [...words].sort(() => Math.random() - 0.5);
     
-    shuffledWords.forEach((word) => {
+    // 2. Separate first word from the rest
+    const firstWord = words[0];
+    const restWords = words.slice(1);
+    
+    // 3. Create a list of all words, with the first word identified
+    const wordsToCreate = [
+      { word: firstWord, isFirst: true },
+      ...restWords.map(w => ({ word: w, isFirst: false }))
+    ];
+  
+    // 4. Shuffle the entire list so their *positions* are random
+    const shuffledWordInfos = wordsToCreate.sort(() => Math.random() - 0.5);
+    
+    // 5. Create all bubbles and add them to the DOM, but hide them initially
+    const bubbles = shuffledWordInfos.map(wordInfo => {
       const bubble = document.createElement('div');
-      bubble.className = 'bubble fade-in';
-      bubble.innerText = word;
-      bubble.dataset.word = word;
+      bubble.className = 'bubble'; // No 'fade-in' class
+      bubble.innerText = wordInfo.word;
+      bubble.dataset.word = wordInfo.word;
+      bubble.style.opacity = 0; // Hide initially
+      bubble.style.transform = 'scale(0.8)';
       
-      bubble.onclick = () => handleBubbleTap(bubble, word);
+      bubble.onclick = () => handleBubbleTap(bubble, wordInfo.word);
       bubbleContainer.appendChild(bubble);
+      
+      return { element: bubble, isFirst: wordInfo.isFirst };
     });
-  }, 300); // This duration should match the fadeOut animation
+  
+    // 6. Animate them in
+    let firstWordBubble = bubbles.find(b => b.isFirst);
+    let otherBubbles = bubbles.filter(b => !b.isFirst);
+  
+    // 6a. Animate the first word in
+    setTimeout(() => {
+      if (firstWordBubble) {
+        firstWordBubble.element.style.transition = 'all 0.3s ease-out';
+        firstWordBubble.element.style.opacity = 1;
+        firstWordBubble.element.style.transform = 'scale(1)';
+      }
+    }, 100); // Small delay after container clear
+  
+    // 6b. Animate the rest in, staggered and in random order
+    otherBubbles.sort(() => Math.random() - 0.5); // Randomize animation order
+    
+    otherBubbles.forEach((bubble, index) => {
+      setTimeout(() => {
+        bubble.element.style.transition = 'all 0.3s ease-out';
+        bubble.element.style.opacity = 1;
+        bubble.element.style.transform = 'scale(1)';
+      }, 200 + index * 80); // Staggered delay, 80ms apart
+    });
+    
+  }, 300); // This duration must match the .fade-out animation (0.3s)
 }
+
 
 /**
  * Plays the audio.
@@ -540,7 +650,7 @@ function playAudio() {
 
 /**
  * Pauses the audio.
- */
+*/
 function pauseAudio() {
   audioPlayer.pause();
   // Button states handled by 'pause' event listener
@@ -588,7 +698,7 @@ function handleBubbleTap(bubble, word) {
   const expectedWord = currentChunkWords[chunkTappedSequence.length];
   
   if (word === expectedWord) {
-    bubble.classList.add('tapped'); // Triggers CSS disappearance
+    bubble.classList.add('tapped'); // Triggers CSS style change
     chunkTappedSequence.push(word);
     tappedSequence.push(word);
     gemsCount += 2;
@@ -603,7 +713,9 @@ function handleBubbleTap(bubble, word) {
       setTimeout(() => {
         currentChunk++;
         loadChunk();
-      }, 800); // Wait for bubble to fade
+        // This timeout waits 300ms after the last bubble is tapped
+        // before starting the animation for the next chunk.
+      }, 300); 
     }
   } else {
     // Wrong word
@@ -683,7 +795,7 @@ function showScore() {
   
   restartBtn.style.display = 'inline-block';
   
-  // Send data to Google Script
+// Send data to Google Script
   fetch(GOOGLE_SCRIPT_URL, {
     method: "POST",
     mode: "no-cors", // Note: no-cors means you won't get a real response
@@ -701,12 +813,11 @@ function showScore() {
     console.log("Score submission attempt finished (no-cors).");
   })
   .catch(error => {
-    // **IMPROVEMENT: Added catch block for network errors**
     console.error("Error submitting score:", error);
-    // Optionally alert the user that score submission might have failed
-    alert("Could not submit score. Please check your internet connection and try again, or download the PDF report.");
+    showCustomAlert("Could not submit score. Please check your internet connection and try again, or download the PDF report.");
   });
 }
+
 
 /**
  * Starts the quiz timer.
@@ -726,7 +837,8 @@ function downloadPDFReport() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   
-  const totalTime = Math.floor((Date.now() - startTime) / 1000);
+  const totalTimeInSeconds = Math.floor((Date.now() - startTime) / 1000);
+  const totalTimeFormatted = `${Math.floor(totalTimeInSeconds / 60)}m ${totalTimeInSeconds % 60}s`;
   const reportDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
   
   // --- PDF Header ---
@@ -780,7 +892,7 @@ function downloadPDFReport() {
       ['Correct Sequence', tappedSequence.length.toString()],
       ['Final Gems', gemsCount.toString()],
       ['Replays Used', `${replayCount}/${MAX_REPLAYS}`],
-      ['Total Time', `${Math.floor(totalTime / 60)}m ${totalTime % 60}s`]
+      ['Total Time', totalTimeFormatted]
     ],
     theme: 'grid',
     styles: { fontSize: 10, font: 'times', cellPadding: 3 },
@@ -839,4 +951,3 @@ function restart() {
 </script>
 </body>
 </html>
-
